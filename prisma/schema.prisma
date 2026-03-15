@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  INVESTOR
+  FOUNDER
+}
+
+enum AccessStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model User {
+  id                       String           @id @default(cuid())
+  name                     String?
+  companyName              String?
+  email                    String?          @unique
+  password                 String?
+  role                     UserRole         @default(FOUNDER)
+  createdAt                DateTime         @default(now())
+  documents                Document[]
+  pitches                  Pitch[]
+  bids                     Bid[]
+  dataRoomAccessAsInvestor DataRoomAccess[] @relation("InvestorAccess")
+  dataRoomAccessAsFounder  DataRoomAccess[] @relation("FounderAccess")
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  title     String
+  fileUrl   String
+  createdAt DateTime @default(now())
+  founderId String
+  founder   User     @relation(fields: [founderId], references: [id], onDelete: Cascade)
+}
+
+model Pitch {
+  id           String   @id @default(cuid())
+  videoUrl     String
+  pitchDeckUrl String?  
+  description  String
+  industry     String
+  createdAt   DateTime @default(now())
+  founderId   String
+  founder     User     @relation(fields: [founderId], references: [id], onDelete: Cascade)
+  bids        Bid[]
+}
+
+model Bid {
+  id         String    @id @default(cuid())
+  amount     Float
+  equity     Float
+  status     BidStatus @default(PENDING)
+  createdAt  DateTime  @default(now())
+  investorId String
+  investor   User      @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  pitchId    String
+  pitch      Pitch     @relation(fields: [pitchId], references: [id], onDelete: Cascade)
+}
+
+model DataRoomAccess {
+  id         String       @id @default(cuid())
+  investorId String
+  investor   User         @relation("InvestorAccess", fields: [investorId], references: [id], onDelete: Cascade)
+  founderId  String
+  founder    User         @relation("FounderAccess", fields: [founderId], references: [id], onDelete: Cascade)
+  status     AccessStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+
+  @@unique([investorId, founderId])
+}
